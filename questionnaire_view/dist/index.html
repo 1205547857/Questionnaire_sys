@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite App</title>
+    <style>
+      /* 预设样式，减少初始化闪烁 */
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow-x: hidden;
+      }
+
+      #app {
+        width: 100%;
+        height: 100vh;
+        margin: 0;
+        padding: 0;
+      }
+
+      /* 初始化时隐藏可能的滚动条闪烁 */
+      body {
+        overflow-y: auto;
+      }
+
+      /* 预设：如果是form路径，隐藏可能的导航元素 */
+      body.standalone-page #app {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      }
+
+      /* 强制隐藏所有可能的导航元素 */
+      body.standalone-page .modern-nav,
+      body.standalone-page nav,
+      body.standalone-page .nav-header,
+      body.standalone-page .sidebar {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        width: 0 !important;
+        height: 0 !important;
+      }
+
+      /* 初始状态：对非form页面隐藏应用内容直到检查完成 */
+      body:not(.standalone-page) #app {
+        opacity: 0;
+        transition: opacity 0.1s ease;
+      }
+
+      body:not(.standalone-page) #app.initialized {
+        opacity: 1;
+      }
+
+      /* form页面立即显示 */
+      body.standalone-page #app {
+        opacity: 1 !important;
+      }
+    </style>
+    <script type="module" crossorigin src="/assets/index-BuxX1puY.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CTUkJTRN.css">
+  </head>
+  <body>
+    <!-- 添加加载遮罩，防止闪烁 -->
+    <div
+      id="loading-mask"
+      style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        z-index: 10000;
+        display: none;
+      "
+    ></div>
+
+    <div id="app"></div>
+    <div id="test"></div>
+
+    <!-- 在Vue初始化前进行路径检查 -->
+    <script>
+      // 立即检查路径
+      const isFormPage = window.location.pathname.startsWith('/form/')
+
+      // 对于form页面，显示加载遮罩防止闪烁
+      if (isFormPage) {
+        document.documentElement.classList.add('form-page')
+        document.body.classList.add('standalone-page')
+
+        // 显示遮罩
+        const mask = document.getElementById('loading-mask')
+        if (mask) {
+          mask.style.display = 'block'
+        }
+      }
+
+      // Vue应用初始化后的回调
+      window.onVueAppMounted = function () {
+        const appEl = document.getElementById('app')
+        const mask = document.getElementById('loading-mask')
+
+        if (isFormPage) {
+          // 隐藏遮罩，显示应用
+          if (mask) {
+            mask.style.display = 'none'
+          }
+          if (appEl) {
+            appEl.style.opacity = '1'
+            appEl.classList.add('initialized')
+          }
+        } else {
+          // 非form页面正常显示
+          if (appEl) {
+            appEl.classList.add('initialized')
+          }
+        }
+      }
+
+      // 备用初始化
+      document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(() => {
+          if (window.onVueAppMounted) {
+            window.onVueAppMounted()
+          }
+        }, 50)
+      })
+    </script>
+
+  </body>
+</html>
