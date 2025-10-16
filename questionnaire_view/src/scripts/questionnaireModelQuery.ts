@@ -6,7 +6,7 @@ import type { Question } from '@/scripts/questionQuery'
 export interface QuestionnaireModel {
   modelId: string
   questionsArray: string
-  can_delete: number
+  canDelete: number
   modelTitle: string
   modelDesc: string
 }
@@ -18,6 +18,7 @@ export interface QuestionItem {
   title: string
   description?: string
   options?: string[]
+  shared?: number // 0 或 1，表示是否共享
 }
 
 // 根据模版ID查询单个问卷模版
@@ -112,6 +113,7 @@ export async function parseQuestionsArray(questionsArrayStr: string): Promise<Qu
           type: String(questionData.questionType || 'text'),
           title: String(questionData.questionTitle || '未命名问题'),
           description: String(questionData.questionTxt || ''),
+          shared: Number(questionData.shared || 0), // 添加shared字段映射
           options: questionData.questionOptions
             ? typeof questionData.questionOptions === 'string'
               ? JSON.parse(questionData.questionOptions)
@@ -127,6 +129,7 @@ export async function parseQuestionsArray(questionsArrayStr: string): Promise<Qu
           type: String(item.type || item.questionType || 'text'),
           title: String(item.title || item.questionTitle || '未命名问题'),
           description: String(item.description || item.questionTxt || ''),
+          shared: Number(item.shared || 0), // 添加shared字段映射
           options: Array.isArray(item.options)
             ? item.options.map(String)
             : item.questionOptions

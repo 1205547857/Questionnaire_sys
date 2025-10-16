@@ -6,7 +6,7 @@ import { useUserStore } from '@/stores/userStore'
 export interface QuestionnaireModel {
   modelId: string | null // 创建时为null，响应时包含后端生成的ID
   questionsArray: string // JSON字符串：问题ID数组
-  can_delete: number // 0或1
+  canDelete: number // 0或1
   modelTitle: string // 模版标题
   modelDesc: string // 模版描述
 }
@@ -21,7 +21,8 @@ export interface QuestionItem {
   questionTitle?: string
   questionOptions?: string
   questionTxt?: string
-  can_delete?: number
+  canDelete?: number
+  shared?: number // 0 或 1，表示是否共享
 
   // 新建类型的问题（在模版中临时创建）
   title?: string
@@ -45,7 +46,7 @@ export async function createQuestionnaireModel(
     const modelData: QuestionnaireModel = {
       modelId: null,
       questionsArray: JSON.stringify(questionIds),
-      can_delete: 0,
+      canDelete: 0,
       modelTitle: title,
       modelDesc: description,
     }

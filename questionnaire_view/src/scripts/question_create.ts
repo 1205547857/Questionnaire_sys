@@ -5,12 +5,14 @@ async function create_question(
   options: string,
   title: string,
   description?: string,
+  shared: number = 0, // 默认不共享
 ) {
   console.log('Creating question with:', {
     questionType,
     options,
     title,
     description,
+    shared,
   })
 
   return await axios
@@ -19,6 +21,7 @@ async function create_question(
       questionOptions: options,
       questionTitle: title,
       questionTxt: description,
+      shared: shared,
     })
     .then((response) => {
       console.log('request successful:', response)

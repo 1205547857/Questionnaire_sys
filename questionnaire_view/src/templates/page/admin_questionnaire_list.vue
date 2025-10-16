@@ -115,38 +115,41 @@
                       预览
                     </button>
 
-                    <!-- 状态操作下拉菜单 -->
+                    <!-- 状态管理下拉菜单 -->
                     <div class="status-dropdown"
-                      :class="{ 'active': questionnaire.questionnaireId === activeDropdown }">
+                      :class="{ 'active': activeDropdown === questionnaire.questionnaireId }">
                       <button @click="toggleStatusDropdown(questionnaire.questionnaireId)"
-                        class="btn btn-sm btn-secondary dropdown-toggle" :disabled="updating">
-                        <i class="fas fa-edit"></i>
-                        状态操作
-                        <i class="fas fa-chevron-down"></i>
+                        class="btn btn-sm btn-secondary status-dropdown-toggle" :disabled="updating">
+                        <i class="fas fa-cog"></i>
+                        状态管理
+                        <i class="fas fa-chevron-down dropdown-arrow"></i>
                       </button>
-                      <div class="dropdown-menu">
+
+                      <div class="status-dropdown-menu" v-show="activeDropdown === questionnaire.questionnaireId">
                         <button v-if="questionnaire.questionnaireCensor !== 'pass'"
-                          @click="updateQuestionnaireStatus(questionnaire, 'pass')" class="dropdown-item status-pass"
+                          @click="updateQuestionnaireStatus(questionnaire, 'pass')" class="status-option status-pass"
                           :disabled="updating">
-                          <i class="fas fa-check"></i>
-                          通过审核
+                          <i class="fas fa-check-circle"></i>
+                          <span>设为已通过</span>
                         </button>
+
                         <button v-if="questionnaire.questionnaireCensor !== 'uncensor'"
                           @click="updateQuestionnaireStatus(questionnaire, 'uncensor')"
-                          class="dropdown-item status-uncensor" :disabled="updating">
+                          class="status-option status-uncensor" :disabled="updating">
                           <i class="fas fa-clock"></i>
-                          待审核
+                          <span>设为待审核</span>
                         </button>
+
                         <button v-if="questionnaire.questionnaireCensor !== 'block'"
-                          @click="updateQuestionnaireStatus(questionnaire, 'block')" class="dropdown-item status-block"
+                          @click="updateQuestionnaireStatus(questionnaire, 'block')" class="status-option status-block"
                           :disabled="updating">
                           <i class="fas fa-ban"></i>
-                          阻止发布
+                          <span>设为已阻止</span>
                         </button>
                       </div>
                     </div>
 
-                    <button @click="deleteQuestionnaire(questionnaire)" class="btn btn-sm btn-danger">
+                    <button @click="deleteQuestionnaire(questionnaire)" class="btn btn-sm btn-danger delete-btn">
                       <i class="fas fa-trash"></i>
                       删除
                     </button>
@@ -281,7 +284,7 @@ const updating = ref(false)
 const searchKeyword = ref('')
 const selectedStatus = ref('')
 
-// 下拉菜单控制
+// 下拉菜单状态
 const activeDropdown = ref<string | null>(null)
 
 // 预览相关
@@ -363,15 +366,20 @@ function toggleStatusDropdown(questionnaireId: string) {
   }
 }
 
-// 点击外部关闭下拉菜单
-function closeDropdown() {
+// 点击其他地方关闭下拉菜单
+function closeDropdowns() {
   activeDropdown.value = null
 }
 
-async function updateQuestionnaireStatus(questionnaire: Questionnaire, newStatus: string) {
-  // 关闭下拉菜单
-  closeDropdown()
+// 监听点击事件，点击外部关闭下拉菜单
+document.addEventListener('click', (event) => {
+  const target = event.target as HTMLElement
+  if (!target.closest('.status-dropdown')) {
+    closeDropdowns()
+  }
+})
 
+async function updateQuestionnaireStatus(questionnaire: Questionnaire, newStatus: string) {
   if (updating.value) return
 
   const confirmMessage = `确定要将问卷"${questionnaire.questionnaireTitle}"的状态修改为"${getStatusDisplay(newStatus)}"吗？`
@@ -392,6 +400,8 @@ async function updateQuestionnaireStatus(questionnaire: Questionnaire, newStatus
         questionnaires.value[index].questionnaireCensor = newStatus
       }
       showMessage(`问卷状态已更新为${getStatusDisplay(newStatus)}`, 'success')
+      // 关闭下拉菜单
+      closeDropdowns()
     } else {
       showMessage('更新问卷状态失败', 'error')
     }
@@ -514,14 +524,6 @@ function getMessageIcon(type: string): string {
 // 组件挂载时加载数据
 onMounted(() => {
   loadAllQuestionnaires()
-
-  // 添加全局点击事件监听器，用于关闭下拉菜单
-  document.addEventListener('click', (event) => {
-    const target = event.target as HTMLElement
-    if (!target.closest('.status-dropdown')) {
-      closeDropdown()
-    }
-  })
 })
 </script>
 
@@ -890,55 +892,55 @@ onMounted(() => {
   align-items: center;
 }
 
-/* 下拉菜单样式 */
+/* 状态下拉菜单样式 */
 .status-dropdown {
   position: relative;
   display: inline-block;
 }
 
-.dropdown-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.status-dropdown-toggle {
   background: #6b7280;
   color: white;
   border: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   transition: all 0.2s;
 }
 
-.dropdown-toggle:hover:not(:disabled) {
+.status-dropdown-toggle:hover:not(:disabled) {
   background: #4b5563;
 }
 
-.dropdown-toggle .fa-chevron-down {
+.status-dropdown-toggle:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dropdown-arrow {
   font-size: 0.75rem;
   transition: transform 0.2s;
 }
 
-.status-dropdown.active .fa-chevron-down {
+.status-dropdown.active .dropdown-arrow {
   transform: rotate(180deg);
 }
 
-.dropdown-menu {
+.status-dropdown-menu {
   position: absolute;
   top: 100%;
   left: 0;
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
   z-index: 1000;
   min-width: 140px;
-  display: none;
   overflow: hidden;
+  animation: dropdownSlide 0.2s ease-out;
 }
 
-.status-dropdown.active .dropdown-menu {
-  display: block;
-  animation: dropdownFadeIn 0.2s ease-out;
-}
-
-@keyframes dropdownFadeIn {
+@keyframes dropdownSlide {
   from {
     opacity: 0;
     transform: translateY(-10px);
@@ -950,55 +952,68 @@ onMounted(() => {
   }
 }
 
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.status-option {
   width: 100%;
   padding: 0.75rem 1rem;
   border: none;
-  background: white;
-  color: #374151;
+  background: none;
   text-align: left;
-  font-size: 0.875rem;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   transition: background-color 0.2s;
+  font-size: 0.875rem;
+  color: #374151;
 }
 
-.dropdown-item:hover:not(:disabled) {
+.status-option:hover:not(:disabled) {
   background: #f3f4f6;
 }
 
-.dropdown-item:disabled {
+.status-option:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.dropdown-item.status-pass {
-  border-left: 3px solid #10b981;
+.status-option.status-pass {
+  color: #059669;
 }
 
-.dropdown-item.status-pass:hover:not(:disabled) {
+.status-option.status-pass:hover:not(:disabled) {
   background: #ecfdf5;
-  color: #065f46;
 }
 
-.dropdown-item.status-uncensor {
-  border-left: 3px solid #f59e0b;
+.status-option.status-uncensor {
+  color: #d97706;
 }
 
-.dropdown-item.status-uncensor:hover:not(:disabled) {
+.status-option.status-uncensor:hover:not(:disabled) {
   background: #fffbeb;
-  color: #92400e;
 }
 
-.dropdown-item.status-block {
-  border-left: 3px solid #ef4444;
+.status-option.status-block {
+  color: #dc2626;
 }
 
-.dropdown-item.status-block:hover:not(:disabled) {
+.status-option.status-block:hover:not(:disabled) {
   background: #fef2f2;
-  color: #991b1b;
+}
+
+.status-option i {
+  width: 16px;
+  text-align: center;
+}
+
+.delete-btn {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: white;
+}
+
+.delete-btn:hover:not(:disabled) {
+  background: #dc2626;
+  border-color: #dc2626;
 }
 
 /* 模态框样式 */
@@ -1307,6 +1322,21 @@ onMounted(() => {
   .action-buttons {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .status-dropdown-menu {
+    left: auto;
+    right: 0;
+    min-width: 120px;
+  }
+
+  .status-dropdown-toggle {
+    font-size: 0.75rem;
+  }
+
+  .delete-btn {
+    margin-top: 0.5rem;
   }
 
   .preview-modal {

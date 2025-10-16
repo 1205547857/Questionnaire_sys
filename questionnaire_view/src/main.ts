@@ -1,4 +1,4 @@
-import { createApp } from 'vue'
+import { createApp, nextTick } from 'vue'
 import { createPinia } from 'pinia'
 
 import App from './App.vue'
@@ -34,7 +34,7 @@ app.mount('#app')
 // 通知应用已挂载
 if (window.onVueAppMounted) {
   // 使用nextTick确保DOM已更新
-  app.config.globalProperties.$nextTick(() => {
+  nextTick(() => {
     window.onVueAppMounted?.()
   })
 } else {

@@ -30,6 +30,12 @@
               <i v-else class="fas fa-sign-in-alt"></i>
               {{ isLoading ? '正在登录...' : '登录' }}
             </button>
+
+            <!-- 管理员测试按钮 -->
+            <button type="button" @click="loginAsAdmin" class="btn btn-admin" :disabled="isLoading">
+              <i class="fas fa-crown"></i>
+              管理员测试登录
+            </button>
           </div>
         </form>
 
@@ -92,11 +98,45 @@ export default {
             this.$router.push('/')
           }, 1500)
         } else {
-          this.errorMessage = '登录失败，请检查您的邮箱和密码是否正确'
+          this.errorMessage = '登录失败，请检查您的邮箱和密码是否正确。或联系管理员查询账号状态'
         }
       } catch (error) {
         console.error('Login error:', error)
         this.errorMessage = '网络错误，请检查网络连接后重试'
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    // 管理员测试登录
+    async loginAsAdmin() {
+      this.clearMessages()
+      this.isLoading = true
+
+      try {
+        // 模拟管理员登录
+        const { useUserStore } = await import('../stores/userStore')
+        const { setAuthToken } = await import('../utils/cookies')
+        const userStore = useUserStore()
+
+        // 设置模拟的管理员 token
+        setAuthToken('admin_test_token_' + Date.now(), 7)
+
+        userStore.login(
+          'admin001',
+          'admin',
+          'admin@questionnaire.com',
+          'admin',
+          '{"questionnaire_ids":[], "question_ids":[], "QuestionnaireModel_ids":[]}'
+        )
+
+        this.successMessage = '管理员测试登录成功！正在跳转...'
+        setTimeout(() => {
+          this.$router.push('/')
+        }, 1500)
+      } catch (error) {
+        console.error('Admin login error:', error)
+        this.errorMessage = '管理员测试登录失败'
       } finally {
         this.isLoading = false
       }
@@ -216,6 +256,9 @@ export default {
 .action-section {
   margin-top: 1rem;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .btn {
@@ -242,6 +285,18 @@ export default {
 .btn-primary:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(79, 172, 254, 0.3);
+}
+
+.btn-admin {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+.btn-admin:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+  border-color: rgba(255, 215, 0, 0.6);
 }
 
 .btn:disabled {

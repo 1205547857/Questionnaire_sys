@@ -17,6 +17,7 @@ export interface Question {
   title: string
   description?: string
   options?: string[]
+  shared?: number // 0 或 1，表示是否共享
 }
 
 // 答案数据类型
@@ -214,6 +215,7 @@ export async function getPublicQuestionById(questionId: string): Promise<Questio
         type: String(data.type || data.questionType || 'text') as Question['type'],
         title: String(data.title || data.questionTitle || data.questionTxt || '未命名问题'),
         description: String(data.description || data.questionTxt || ''),
+        shared: Number(data.shared || 0), // 添加shared字段映射
         options: Array.isArray(data.options)
           ? data.options.map(String)
           : data.questionOptions
@@ -376,6 +378,7 @@ export async function parsePublicQuestionsArray(
             type: (obj.type || obj.questionType || 'text') as Question['type'],
             title: String(obj.title || obj.questionTitle || obj.questionTxt || `问题 ${index + 1}`),
             description: String(obj.description || obj.questionTxt || ''),
+            shared: Number(obj.shared || 0), // 添加shared字段映射
             options: Array.isArray(obj.options) ? obj.options.map(String) : [],
           }
         }
@@ -384,6 +387,7 @@ export async function parsePublicQuestionsArray(
           type: 'text' as const,
           title: String(item),
           description: '',
+          shared: 0, // 默认不共享
           options: [],
         }
       })
@@ -429,89 +433,78 @@ export async function submitPublicQuestionnaireAnswers(
   answers: QuestionnaireAnswers,
 ): Promise<{ success: boolean; message: string }> {
   try {
-    console.log('Submitting questionnaire answers (public access):', { questionnaireId, answers })
+    console.log('Submitting questionnaire answers to backend:', { questionnaireId, answers })
 
-    // TODO: 等待后端提供提交问卷答案的API端点
-    // 目前作为占位符实现，模拟提交过程
-    console.warn('Submit API not implemented yet - using mock implementation')
+    // 获取用户IP地址
+    const writerIp = await getClientIP()
 
-    // 模拟API调用延迟
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    // 模拟成功响应（实际项目中需要替换为真实API调用）
-    const mockSuccess = Math.random() > 0.1 // 90%成功率模拟
-
-    if (mockSuccess) {
-      // 在真实API可用之前，至少保存到本地存储作为备份
-      const submissionKey = `questionnaire_submission_${questionnaireId}_${Date.now()}`
-      const submissionData = {
-        questionnaireId,
-        answers,
-        submitTime: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        status: 'pending_server_sync',
-      }
-
-      try {
-        localStorage.setItem(submissionKey, JSON.stringify(submissionData))
-        console.log('Answers saved locally pending server sync:', submissionKey)
-      } catch (storageError) {
-        console.warn('Failed to save submission locally:', storageError)
-      }
-
-      return {
-        success: true,
-        message: '问卷提交成功，感谢您的参与！您的答案已保存。',
-      }
-    } else {
-      return {
-        success: false,
-        message: '提交失败，请稍后重试。',
-      }
+    // 构造符合后端API期望的数据格式
+    const submissionData = {
+      questionnaireId: questionnaireId,
+      answer: JSON.stringify(answers), // 将answers对象序列化为字符串
+      writerIp: writerIp,
     }
 
-    /*
-    // 未来真实API实现示例：
-    const response = await axios.post(
-      `http://localhost:8081/questionnaire/submit/${questionnaireId}`,
-      {
-        answers: answers,
-        submitTime: new Date().toISOString(),
-        userAgent: navigator.userAgent
+    // 调用后端API
+    const response = await axios.post(`${API_BASE_URL}/answer/submit`, submissionData, {
+      headers: {
+        'Content-Type': 'application/json',
       },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    )
+    })
 
-    if (response.status === 200 || response.status === 201) {
+    if (response.status === 200) {
+      console.log('Questionnaire answers submitted successfully')
       return { success: true, message: '问卷提交成功，感谢您的参与！' }
     } else {
+      console.error('Failed to submit questionnaire answers:', response)
       return { success: false, message: '提交失败，请稍后重试' }
     }
-    */
   } catch (error) {
-    console.error('Error submitting questionnaire:', error)
-
-    // 提供更详细的错误信息
+    console.error('Error submitting questionnaire answers:', error)
     if (axios.isAxiosError(error)) {
-      const status = error.response?.status
-      if (status === 400) {
-        return { success: false, message: '提交数据格式错误，请检查后重试' }
-      } else if (status === 404) {
-        return { success: false, message: '问卷不存在或已过期' }
-      } else if (status === 500) {
-        return { success: false, message: '服务器错误，请稍后重试' }
+      const errorMessage = error.response?.data?.message || error.response?.data || '网络错误'
+      return { success: false, message: `提交失败：${errorMessage}` }
+    }
+    return { success: false, message: '网络错误，请检查网络连接' }
+  }
+}
+
+/**
+ * 获取客户端IP地址
+ * @returns Promise<string> IP地址
+ */
+async function getClientIP(): Promise<string> {
+  try {
+    // 尝试从多个公共API获取IP
+    const ipApis = [
+      'https://api.ipify.org?format=json',
+      'https://httpbin.org/ip',
+      'https://api.ip.sb/ip',
+    ]
+
+    for (const api of ipApis) {
+      try {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 3000)
+        const response = await fetch(api, { signal: controller.signal })
+        clearTimeout(timeoutId)
+        const data = await response.json()
+
+        // 不同API返回格式不同
+        if (data.ip) return data.ip
+        if (data.origin) return data.origin
+        if (typeof data === 'string') return data
+      } catch (error) {
+        console.warn(`Failed to get IP from ${api}:`, error)
+        continue
       }
     }
 
-    // 网络错误或其他未知错误
-    return {
-      success: false,
-      message: '网络错误，提交失败。您的答案已保存在本地，请检查网络连接后重试。',
-    }
+    // 如果所有API都失败，返回默认值
+    return 'unknown'
+  } catch (error) {
+    console.warn('Failed to get client IP:', error)
+    return 'unknown'
   }
 }
 

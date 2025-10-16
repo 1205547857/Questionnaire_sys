@@ -33,7 +33,7 @@ public class QuestionServiceImpl implements QuestionService {
             @CacheEvict(cacheNames = "getSharedQuestion",
                     allEntries = true),
             @CacheEvict(cacheNames = "searchQuestionById",
-                    key = "'searchQuestionById'+#questionId")
+                    key = "'searchQuestionById:'+#questionId")
     })
     public boolean deleteQuestionById(String questionId) {
         if(mapper.selectById(questionId).getCanDelete()==0 && mapper.deleteById(questionId)>0){
@@ -58,7 +58,7 @@ public class QuestionServiceImpl implements QuestionService {
             @CacheEvict(cacheNames = "getSharedQuestion",
                     allEntries = true),
             @CacheEvict(cacheNames = "searchQuestionById",
-                    key = "'searchQuestionById'+#question.questionId")
+                    key = "'searchQuestionById:'+#question.questionId")
     })
     public Question updateQuestion(Question question) {
         if(question.getCanDelete()==0 && mapper.updateById(question)>0){

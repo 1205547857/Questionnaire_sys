@@ -1,126 +1,6 @@
 <template>
   <div class="questionnaire-form">
-    <!-- 页面头部 -->
-    <div class="page-header">
-      <div class="header-content">
-        <h1 class="page-title">{{ questionnaire?.questionnaireTitle || '问卷调查' }}</h1>
-        <p v-if="questionnaire?.questionnaireTitle" class="page-subtitle">感谢您参与此次问卷调查</p>
-      </div>
-    </div>
-
-    <!-- 加载状态 -->
-    <div v-if="loading" class="loading-section">
-      <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i>
-        <p>正在加载问卷...</p>
-      </div>
-    </div>
-
-    <!-- 问卷不存在或未启动 -->
-    <div v-else-if="!questionnaire || !isQuestionnaireActive" class="error-section">
-      <div class="error-content">
-        <i class="fas fa-exclamation-triangle"></i>
-        <h3>{{ !questionnaire ? '问卷不存在' : '问卷未启动' }}</h3>
-        <p>{{ getErrorMessage() }}</p>
-      </div>
-    </div>
-
-    <!-- 问卷表单 -->
-    <div v-else class="questionnaire-container">
-      <div class="questionnaire-card">
-        <!-- 问卷信息 -->
-        <div class="questionnaire-info">
-          <h2 class="questionnaire-title">{{ questionnaire.questionnaireTitle }}</h2>
-          <div class="questionnaire-meta">
-            <span class="meta-item">
-              <i class="fas fa-clock"></i>
-              预计用时: {{ estimatedTime }}分钟
-            </span>
-            <span class="meta-item">
-              <i class="fas fa-list-ol"></i>
-              共{{ questions.length }}道题目
-            </span>
-          </div>
-        </div>
-
-        <!-- 问题列表 -->
-        <form @submit.prevent="submitQuestionnaire" class="questions-form">
-          <div v-for="(question, index) in questions" :key="question.id" class="question-item">
-            <div class="question-header">
-              <span class="question-number">{{ index + 1 }}</span>
-              <div class="question-content">
-                <h3 class="question-title">{{ question.title }}</h3>
-                <p v-if="question.description" class="question-description">
-                  {{ question.description }}
-                </p>
-              </div>
-              <div class="question-type">
-                <span class="type-badge">{{ getQuestionTypeDisplay(question.type) }}</span>
-              </div>
-            </div>
-
-            <!-- 问题输入区域 -->
-            <div class="question-input">
-              <!-- 单选题 -->
-              <div v-if="question.type === 'single'" class="input-group">
-                <div v-for="(option, optionIndex) in question.options" :key="optionIndex" class="option-item">
-                  <input :id="`q${index}_${optionIndex}`" v-model="answers[question.id]" type="radio"
-                    :name="`question_${question.id}`" :value="option" class="radio-input" />
-                  <label :for="`q${index}_${optionIndex}`" class="radio-label">
-                    <span class="radio-custom"></span>
-                    <span class="option-text">{{ option }}</span>
-                  </label>
-                </div>
-              </div>
-
-              <!-- 多选题 -->
-              <div v-else-if="question.type === 'multiple'" class="input-group">
-                <div v-for="(option, optionIndex) in question.options" :key="optionIndex" class="option-item">
-                  <input :id="`q${index}_${optionIndex}`" v-model="answers[question.id]" type="checkbox" :value="option"
-                    class="checkbox-input" />
-                  <label :for="`q${index}_${optionIndex}`" class="checkbox-label">
-                    <span class="checkbox-custom"></span>
-                    <span class="option-text">{{ option }}</span>
-                  </label>
-                </div>
-              </div>
-
-              <!-- 下拉选择题 -->
-              <div v-else-if="question.type === 'dropdown'" class="input-group">
-                <select v-model="answers[question.id]" class="select-input">
-                  <option value="">请选择...</option>
-                  <option v-for="(option, optionIndex) in question.options" :key="optionIndex" :value="option">
-                    {{ option }}
-                  </option>
-                </select>
-              </div>
-
-              <!-- 文本题 -->
-              <div v-else-if="question.type === 'text'" class="input-group">
-                <textarea v-model="answers[question.id]" class="text-input" placeholder="请输入您的答案..."
-                  rows="4"></textarea>
-              </div>
-            </div>
-          </div>
-
-          <!-- 提交按钮 -->
-          <div class="submit-section">
-            <div class="submit-actions">
-              <button type="button" @click="saveDraft" class="btn btn-secondary" :disabled="submitting">
-                <i class="fas fa-save"></i>
-                保存草稿
-              </button>
-              <button type="submit" class="btn btn-primary" :disabled="submitting || !isFormValid">
-                <i class="fas fa-paper-plane"></i>
-                {{ submitting ? '提交中...' : '提交问卷' }}
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- 提交成功 -->
+    <!-- 提交成功状态 -->
     <div v-if="submitted" class="success-overlay">
       <div class="success-content">
         <div class="success-icon">
@@ -128,36 +8,196 @@
         </div>
         <h3>提交成功</h3>
         <p>感谢您的参与！您的回答已成功提交。</p>
-        <button @click="resetForm" class="btn btn-primary">
-          <i class="fas fa-redo"></i>
-          重新填写
-        </button>
+        <p class="submission-note">
+          <i class="fas fa-info-circle"></i>
+          每个问卷只能提交一次，感谢您的配合。
+        </p>
       </div>
     </div>
 
-    <!-- 调试信息（开发模式） -->
-    <div v-if="isDevelopment" class="debug-panel">
-      <details>
-        <summary>🔧 调试信息</summary>
-        <div class="debug-content">
-          <p><strong>问卷ID:</strong> {{ debugInfo.questionnaireId }}</p>
-          <p><strong>API基础URL:</strong> {{ debugInfo.apiBaseUrl }}</p>
-          <p><strong>问卷端点:</strong> {{ debugInfo.questionnairePath }}</p>
-          <p><strong>模型端点:</strong> {{ debugInfo.modelPath }}</p>
-          <p><strong>时间戳:</strong> {{ debugInfo.timestamp }}</p>
-          <button @click="testConnection" class="test-btn">测试API连接</button>
+    <!-- 问卷内容（未提交时显示） -->
+    <template v-else>
+      <!-- 页面头部 -->
+      <div class="page-header">
+        <div class="header-content">
+          <h1 class="page-title">{{ questionnaire?.questionnaireTitle || '问卷调查' }}</h1>
+          <p v-if="questionnaire?.questionnaireTitle" class="page-subtitle">感谢您参与此次问卷调查</p>
         </div>
-      </details>
-    </div>
+      </div>
 
-    <!-- 消息提示 -->
-    <div v-if="message.text" class="message-container" :class="message.type">
-      <div class="message-content">
-        <i :class="getMessageIcon(message.type)"></i>
-        <span>{{ message.text }}</span>
-        <button @click="clearMessage" class="message-close">
-          <i class="fas fa-times"></i>
-        </button>
+      <!-- 加载状态 -->
+      <div v-if="loading" class="loading-section">
+        <div class="loading-spinner">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p>正在加载问卷...</p>
+        </div>
+      </div>
+
+      <!-- 问卷不存在或未启动 -->
+      <div v-else-if="!questionnaire || !isQuestionnaireActive" class="error-section">
+        <div class="error-content">
+          <i class="fas fa-exclamation-triangle"></i>
+          <h3>{{ !questionnaire ? '问卷不存在' : '问卷未启动' }}</h3>
+          <p>{{ getErrorMessage() }}</p>
+
+          <!-- 调试信息 -->
+          <div v-if="isDevelopment" class="error-debug-info">
+            <details>
+              <summary>调试信息</summary>
+              <div class="debug-details">
+                <p><strong>问卷ID:</strong> {{ questionnaireId }}</p>
+                <p><strong>问卷数据:</strong> {{ questionnaire ? '已加载' : '未加载' }}</p>
+                <p><strong>问卷状态:</strong> {{ questionnaire?.questionnaireStatus || '无' }}</p>
+                <p><strong>问题数量:</strong> {{ questions.length }}</p>
+                <p><strong>API配置:</strong></p>
+                <ul>
+                  <li>基础URL: http://localhost:8081</li>
+                  <li>问卷端点: /questionnaire/:id</li>
+                  <li>模型端点: /model/:id</li>
+                </ul>
+              </div>
+            </details>
+            <button @click="loadQuestionnaire" class="retry-btn">
+              <i class="fas fa-redo"></i> 重新加载
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 问卷表单 -->
+      <div v-else class="questionnaire-container">
+        <div class="questionnaire-card">
+          <!-- 问卷信息 -->
+          <div class="questionnaire-info">
+            <h2 class="questionnaire-title">{{ questionnaire.questionnaireTitle }}</h2>
+            <div class="questionnaire-meta">
+              <span class="meta-item">
+                <i class="fas fa-clock"></i>
+                预计用时: {{ estimatedTime }}分钟
+              </span>
+              <span class="meta-item">
+                <i class="fas fa-list-ol"></i>
+                共{{ questions.length }}道题目
+              </span>
+            </div>
+          </div>
+
+          <!-- 问题列表 -->
+          <form @submit.prevent="submitQuestionnaire" class="questions-form">
+            <div v-for="(question, index) in questions" :key="question.id" class="question-item">
+              <div class="question-header">
+                <span class="question-number">{{ index + 1 }}</span>
+                <div class="question-content">
+                  <h3 class="question-title">{{ question.title }}</h3>
+                  <p v-if="question.description" class="question-description">
+                    {{ question.description }}
+                  </p>
+                </div>
+                <div class="question-type">
+                  <span class="type-badge">{{ getQuestionTypeDisplay(question.type) }}</span>
+                </div>
+              </div>
+
+              <!-- 问题输入区域 -->
+              <div class="question-input">
+                <!-- 单选题 -->
+                <div v-if="question.type === 'single'" class="input-group">
+                  <div v-for="(option, optionIndex) in question.options" :key="optionIndex" class="option-item">
+                    <input :id="`q${index}_${optionIndex}`" v-model="answers[question.id]" type="radio"
+                      :name="`question_${question.id}`" :value="option" class="radio-input" />
+                    <label :for="`q${index}_${optionIndex}`" class="radio-label">
+                      <span class="radio-custom"></span>
+                      <span class="option-text">{{ option }}</span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- 多选题 -->
+                <div v-else-if="question.type === 'multiple'" class="input-group">
+                  <div v-for="(option, optionIndex) in question.options" :key="optionIndex" class="option-item">
+                    <input :id="`q${index}_${optionIndex}`" v-model="answers[question.id]" type="checkbox"
+                      :value="option" class="checkbox-input" />
+                    <label :for="`q${index}_${optionIndex}`" class="checkbox-label">
+                      <span class="checkbox-custom"></span>
+                      <span class="option-text">{{ option }}</span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- 下拉选择题 -->
+                <div v-else-if="question.type === 'dropdown'" class="input-group">
+                  <select v-model="answers[question.id]" class="select-input">
+                    <option value="">请选择...</option>
+                    <option v-for="(option, optionIndex) in question.options" :key="optionIndex" :value="option">
+                      {{ option }}
+                    </option>
+                  </select>
+                </div>
+
+                <!-- 文本题 -->
+                <div v-else-if="question.type === 'text'" class="input-group">
+                  <textarea v-model="answers[question.id]" class="text-input" placeholder="请输入您的答案..."
+                    rows="4"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- 提交按钮 -->
+            <div class="submit-section">
+              <div class="submit-actions">
+                <button type="button" @click="saveDraft" class="btn btn-secondary" :disabled="submitting">
+                  <i class="fas fa-save"></i>
+                  保存草稿
+                </button>
+                <button type="submit" class="btn btn-primary" :disabled="submitting || !isFormValid">
+                  <i class="fas fa-paper-plane"></i>
+                  {{ submitting ? '提交中...' : '提交问卷' }}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- 调试信息（开发模式） -->
+      <div v-if="isDevelopment" class="debug-panel">
+        <details>
+          <summary>🔧 调试信息</summary>
+          <div class="debug-content">
+            <p><strong>问卷ID:</strong> {{ debugInfo.questionnaireId }}</p>
+            <p><strong>API基础URL:</strong> {{ debugInfo.apiBaseUrl }}</p>
+            <p><strong>问卷端点:</strong> {{ debugInfo.questionnairePath }}</p>
+            <p><strong>模型端点:</strong> {{ debugInfo.modelPath }}</p>
+            <p><strong>时间戳:</strong> {{ debugInfo.timestamp }}</p>
+            <button @click="testConnection" class="test-btn">测试API连接</button>
+          </div>
+        </details>
+      </div>
+
+      <!-- 消息提示 -->
+      <div v-if="message.text" class="message-container" :class="message.type">
+        <div class="message-content">
+          <i :class="getMessageIcon(message.type)"></i>
+          <span>{{ message.text }}</span>
+          <button @click="clearMessage" class="message-close">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+    </template>
+
+    <!-- 提交成功覆盖层 -->
+    <div v-if="submitted" class="success-overlay">
+      <div class="success-content">
+        <div class="success-icon">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <h3>提交成功</h3>
+        <p>感谢您的参与！您的回答已成功提交。</p>
+        <p class="submission-note">
+          <i class="fas fa-info-circle"></i>
+          每个问卷只能提交一次，感谢您的配合。
+        </p>
       </div>
     </div>
   </div>
@@ -174,11 +214,10 @@ import {
   savePublicQuestionnaireDraft,
   loadPublicQuestionnaireDraft,
   testApiConnection,
-  API_BASE_URL,
-  API_ENDPOINTS,
   type QuestionnaireAnswers
 } from '@/scripts/questionnairePublicApi'
 import { deserializeQuestionnaireStatus, type Questionnaire } from '@/scripts/questionnaireCreate'
+import { setCookie, getCookie, hasCookie } from '@/utils/cookies'
 
 const route = useRoute()
 
@@ -206,9 +245,9 @@ const isDevelopment = computed(() => import.meta.env.DEV)
 const debugInfo = computed(() => ({
   timestamp: new Date().toISOString(),
   questionnaireId: questionnaireId.value,
-  apiBaseUrl: API_BASE_URL,
-  questionnairePath: API_ENDPOINTS.questionnaire.replace('{id}', questionnaireId.value),
-  modelPath: API_ENDPOINTS.model.replace('{id}', questionnaireId.value)
+  apiBaseUrl: 'http://localhost:8081',
+  questionnairePath: `/questionnaire/${questionnaireId.value}`,
+  modelPath: `/model/${questionnaireId.value}`
 }))
 
 const isQuestionnaireActive = computed(() => {
@@ -234,41 +273,78 @@ const isFormValid = computed(() => {
 // 方法
 async function loadQuestionnaire() {
   loading.value = true
+
   try {
+    console.log('开始加载问卷，ID:', questionnaireId.value)
+    console.log('API配置:', { baseUrl: 'http://localhost:8081' })
+
     // 首先测试API连接
     const apiAvailable = await testApiConnection()
+    console.log('API连接状态:', apiAvailable)
+
     if (!apiAvailable) {
-      console.warn('API connection test failed, but continuing with request')
+      showMessage('API服务不可用，请检查后端服务是否启动', 'error')
+      return
     }
 
     const data = await getPublicQuestionnaireById(questionnaireId.value)
+    console.log('问卷数据:', data)
+
     if (data) {
       questionnaire.value = data
+      console.log('问卷加载成功:', data.questionnaireTitle)
 
       // 加载问卷问题
       await loadQuestions()
 
       // 加载草稿（如果有）
       loadDraftAnswers()
+
+      showMessage('问卷加载成功', 'success')
     } else {
-      showMessage('未找到指定的问卷，请检查链接是否正确', 'error')
+      console.error('问卷数据为空')
+      showMessage('未找到指定的问卷，请检查问卷ID是否正确', 'error')
     }
   } catch (error) {
-    console.error('Failed to load questionnaire:', error)
-    showMessage('加载问卷失败，请检查网络连接', 'error')
+    console.error('加载问卷异常:', error)
+
+    let errorMessage = '加载问卷失败'
+    if (error instanceof Error) {
+      if (error.message.includes('404')) {
+        errorMessage = '问卷不存在或已被删除'
+      } else if (error.message.includes('500')) {
+        errorMessage = '服务器内部错误'
+      } else if (error.message.includes('Network Error')) {
+        errorMessage = '网络连接失败，请检查后端服务'
+      }
+    }
+
+    showMessage(errorMessage, 'error')
   } finally {
     loading.value = false
   }
 }
 
 async function loadQuestions() {
-  if (!questionnaire.value) return
+  if (!questionnaire.value) {
+    console.error('问卷数据为空，无法加载问题')
+    return
+  }
 
   try {
+    console.log('开始加载问题，模型ID:', questionnaire.value.modelId)
+
     const model = await getPublicQuestionnaireModelById(questionnaire.value.modelId)
-    if (model) {
+    console.log('问题模型数据:', model)
+
+    if (model && model.questionsArray) {
+      console.log('准备解析问题，questionsArray类型:', typeof model.questionsArray)
+      console.log('questionsArray内容:', model.questionsArray)
+
       const questionList = await parsePublicQuestionsArray(model.questionsArray)
       questions.value = questionList
+      console.log('问题解析结果:', questionList)
+      console.log('解析后的问题数量:', questionList.length)
 
       // 初始化答案对象
       questionList.forEach((question: { id: string; type: string }) => {
@@ -278,10 +354,36 @@ async function loadQuestions() {
           answers[question.id] = ''
         }
       })
+
+      console.log('问题加载完成:', questions.value.length, '个问题')
+
+      // 更新消息提示
+      if (questionList.length > 0) {
+        showMessage(`问卷加载成功，共${questionList.length}个问题`, 'success')
+      }
+
+      // 如果问题数量为0，显示提示
+      if (questionList.length === 0) {
+        showMessage('该问卷暂无问题，请联系问卷发布者', 'warning')
+      }
+    } else {
+      console.error('问题模型数据为空或缺少questionsArray')
+      console.log('模型对象键值:', model ? Object.keys(model) : '模型为null')
+      showMessage('问题数据为空，请检查问卷配置', 'error')
     }
   } catch (error) {
-    console.error('Failed to load questions:', error)
-    showMessage('加载问题失败', 'error')
+    console.error('加载问题异常:', error)
+
+    let errorMessage = '加载问题失败'
+    if (error instanceof Error) {
+      if (error.message.includes('404')) {
+        errorMessage = '问题模型不存在'
+      } else if (error.message.includes('500')) {
+        errorMessage = '服务器错误，无法加载问题'
+      }
+    }
+
+    showMessage(errorMessage, 'error')
   }
 }
 
@@ -297,6 +399,17 @@ async function submitQuestionnaire() {
 
     if (result.success) {
       submitted.value = true
+
+      // 设置Cookie标识，记录已提交状态
+      const submissionCookieName = `questionnaire_submitted_${questionnaireId.value}`
+      const submissionData = {
+        submittedAt: new Date().toISOString(),
+        questionnaireId: questionnaireId.value,
+        questionnaireTitle: questionnaire.value?.questionnaireTitle || '问卷调查'
+      }
+      setCookie(submissionCookieName, JSON.stringify(submissionData), 30) // 30天有效
+      console.log('问卷提交标识已保存:', submissionCookieName)
+
       showMessage(result.message, 'success')
       // 清除草稿
       clearDraft()
@@ -329,8 +442,7 @@ async function testConnection() {
     if (isConnected) {
       showMessage('API连接测试成功！', 'success')
       console.log('API连接正常:', {
-        baseUrl: API_BASE_URL,
-        endpoints: API_ENDPOINTS
+        baseUrl: 'http://localhost:8081'
       })
     } else {
       showMessage('API连接测试失败：服务器无响应', 'error')
@@ -341,18 +453,7 @@ async function testConnection() {
   }
 }
 
-function resetForm() {
-  submitted.value = false
 
-  // 重置答案
-  questions.value.forEach((question: { id: string; type: string }) => {
-    if (question.type === 'multiple') {
-      answers[question.id] = []
-    } else {
-      answers[question.id] = ''
-    }
-  })
-}
 
 // 加载草稿答案
 function loadDraftAnswers() {
@@ -415,9 +516,34 @@ function getMessageIcon(type: string): string {
   return icons[type] || 'fas fa-info-circle'
 }
 
+// 检查是否已经提交过问卷
+function checkSubmissionStatus() {
+  const submissionCookieName = `questionnaire_submitted_${questionnaireId.value}`
+
+  if (hasCookie(submissionCookieName)) {
+    try {
+      const submissionData = JSON.parse(getCookie(submissionCookieName) || '{}')
+      console.log('检测到问卷已提交:', submissionData)
+
+      submitted.value = true
+      showMessage(`您已经于 ${new Date(submissionData.submittedAt).toLocaleString()} 提交过此问卷`, 'info')
+
+      return true
+    } catch (error) {
+      console.warn('解析提交状态Cookie失败:', error)
+    }
+  }
+
+  return false
+}
+
 // 组件挂载时加载数据
 onMounted(() => {
-  loadQuestionnaire()
+  // 先检查是否已提交
+  if (!checkSubmissionStatus()) {
+    // 如果未提交，再加载问卷数据
+    loadQuestionnaire()
+  }
 })
 </script>
 
@@ -831,8 +957,23 @@ onMounted(() => {
 
 .success-content p {
   color: #718096;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   line-height: 1.5;
+}
+
+.submission-note {
+  background: #f0f9f4;
+  border: 1px solid #10b981;
+  border-radius: 8px;
+  padding: 1rem;
+  color: #065f46;
+  font-size: 0.9rem;
+  margin-bottom: 0 !important;
+}
+
+.submission-note i {
+  margin-right: 0.5rem;
+  color: #10b981;
 }
 
 /* 消息提示 */
@@ -984,5 +1125,53 @@ onMounted(() => {
 
 .test-btn:hover {
   background: #45a049;
+}
+
+/* 错误调试信息样式 */
+.error-debug-info {
+  margin-top: 20px;
+  text-align: left;
+}
+
+.error-debug-info details {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error-debug-info summary {
+  cursor: pointer;
+  font-weight: bold;
+  padding: 5px;
+}
+
+.debug-details {
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+.debug-details p,
+.debug-details li {
+  margin: 5px 0;
+  word-break: break-all;
+}
+
+.debug-details ul {
+  margin: 5px 0 5px 20px;
+}
+
+.retry-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.retry-btn:hover {
+  background: #0056b3;
 }
 </style>

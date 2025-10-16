@@ -9,7 +9,7 @@
 ### 主要API端点
 
 1. **获取所有问卷**
-   - **端点**: `GET /questionnaire/getAllQuestionnaire`
+   - **端点**: `GET /questionnaire/list`
    - **用途**: 获取系统中所有问卷的列表
    - **响应**: 包含问卷数组的JSON对象
 

@@ -156,7 +156,7 @@ function saveChanges() {
 
   isLoading.value = true;
 
-  updateUserInfo(userStore.userId, updatedEmail.value, updatedUsername.value, newPassword.value, JSON.stringify(userStore.userData))
+  updateUserInfo(userStore.userId, updatedEmail.value, updatedUsername.value, newPassword.value, userStore.userData)
     .then((success) => {
       if (success) {
         userStore.username = updatedUsername.value;

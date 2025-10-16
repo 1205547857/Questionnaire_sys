@@ -6,7 +6,7 @@ import type { QuestionnaireModel } from './questionnaireModelQuery'
 export interface UpdateModelRequest {
   modelId: string
   questionsArray: string
-  can_delete: number
+  canDelete: number
   modelTitle: string
   modelDesc: string
 }
@@ -15,6 +15,7 @@ export interface UpdateModelRequest {
 export interface UpdateModelResponse {
   success: boolean
   message?: string
+  newModelId?: string // 新的模版ID（如果后端生成了新ID）
 }
 
 /**
@@ -81,7 +82,21 @@ export async function updateQuestionnaireModel(
 
     if (response.status === 200) {
       console.log('Questionnaire model updated successfully')
-      return { success: true, message: '模版更新成功' }
+
+      // 检查响应中是否包含新的模版ID
+      const responseData = response.data
+      let newModelId: string | undefined
+
+      if (responseData && responseData.modelId && responseData.modelId !== modelData.modelId) {
+        newModelId = responseData.modelId
+        console.log(`Model ID changed: ${modelData.modelId} -> ${newModelId}`)
+      }
+
+      return {
+        success: true,
+        message: newModelId ? '模版更新成功，ID已更新' : '模版更新成功',
+        newModelId,
+      }
     }
 
     console.error('Failed to update questionnaire model:', response)
